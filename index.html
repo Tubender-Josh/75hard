@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="75 Hard" />
+  <meta name="theme-color" content="#1D9E75" />
+  <link rel="manifest" href="/75hard/manifest.json" />
+  <link rel="apple-touch-icon" href="/75hard/icons/icon-192.png" />
+  <title>75 Hard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f2f2f7;
+      color: #1c1c1e;
+      min-height: 100vh;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .screen { display: none; padding: 1.5rem 1rem; max-width: 480px; margin: 0 auto; }
+    .screen.active { display: block; }
+
+    /* Header */
+    .header { margin-bottom: 1.5rem; }
+    .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .header p { font-size: 14px; color: #6e6e73; margin-top: 4px; }
+
+    /* Nav tabs */
+    .nav {
+      display: flex;
+      background: #e5e5ea;
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 1.5rem;
+    }
+    .nav button {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #6e6e73;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .nav button.active {
+      background: #ffffff;
+      color: #1c1c1e;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    /* Task items */
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .task-item.done { background: #e8f8f3; }
+    .task-item:active { background: #f2f2f7; }
+    .task-item.done:active { background: #d4f0e8; }
+
+    .task-icon {
+      font-size: 22px;
+      width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .task-label {
+      font-size: 15px;
+      color: #1c1c1e;
+      flex: 1;
+      line-height: 1.35;
+    }
+    .task-item.done .task-label { color: #1D9E75; }
+
+    .check-circle {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid #c7c7cc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .task-item.done .check-circle {
+      background: #1D9E75;
+      border-color: #1D9E75;
+    }
+    .checkmark {
+      display: none;
+      width: 14px;
+      height: 14px;
+    }
+    .task-item.done .checkmark { display: block; }
+
+    /* Complete button */
+    .complete-btn {
+      width: 100%;
+      padding: 16px;
+      margin-top: 1.5rem;
+      border-radius: 14px;
+      border: none;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .complete-btn:active { transform: scale(0.98); }
+    .complete-btn.ready { background: #1D9E75; color: #ffffff; }
+    .complete-btn.done-state { background: #e8f8f3; color: #1D9E75; cursor: default; }
+    .complete-btn.not-ready { background: #e5e5ea; color: #aeaeb2; cursor: not-allowed; }
+
+    /* Streak banner */
+    .streak-banner {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stat-block { text-align: center; flex: 1; }
+    .stat-num { font-size: 32px; font-weight: 700; color: #1c1c1e; }
+    .stat-label { font-size: 12px; color: #6e6e73; margin-top: 2px; }
+    .stat-divider { width: 1px; background: #e5e5ea; align-self: stretch; }
+
+    /* Progress grid */
+    .grid-wrap {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      margin-bottom: 1rem;
+    }
+    .day-cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 600;
+    }
+    .day-cell.completed { background: #1D9E75; color: #085041; }
+    .day-cell.missed { background: #ff3b30; color: #ffffff; }
+    .day-cell.today { background: #007aff; color: #ffffff; }
+    .day-cell.future { background: #e5e5ea; color: #aeaeb2; }
+
+    .progress-text {
+      font-size: 13px;
+      color: #6e6e73;
+      text-align: center;
+      margin-top: 0.75rem;
+    }
+
+    /* Setup screen */
+    .setup-wrap {
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .setup-logo {
+      font-size: 48px;
+      margin-bottom: 1rem;
+    }
+    .setup-title { font-size: 32px; font-weight: 700; margin-bottom: 0.5rem; }
+    .setup-sub { font-size: 16px; color: #6e6e73; margin-bottom: 2rem; line-height: 1.5; }
+
+    .setup-card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .setup-card label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6e6e73;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .setup-card input[type=date] {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1.5px solid #e5e5ea;
+      font-size: 16px;
+      background: #f2f2f7;
+      color: #1c1c1e;
+      outline: none;
+    }
+    .setup-card input[type=date]:focus { border-color: #1D9E75; }
+
+    .start-btn {
+      width: 100%;
+      padding: 16px;
+      background: #1D9E75;
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .start-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #6e6e73;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setup-screen" class="screen active">
+  <div class="setup-wrap">
+    <div class="setup-logo">💪</div>
+    <h1 class="setup-title">75 Hard</h1>
+    <p class="setup-sub">The mental toughness challenge. 75 days. No excuses. Complete all 7 tasks every single day.</p>
+    <div class="setup-card">
+      <label>Start Date</label>
+      <input type="date" id="start-date-input" />
+    </div>
+    <button class="start-btn" onclick="startChallenge()">Begin the Challenge →</button>
+  </div>
+</div>
+
+<!-- Main Screen -->
+<div id="main-screen" class="screen">
+  <div class="nav">
+    <button id="tab-today" class="active" onclick="showTab('today')">Today</button>
+    <button id="tab-progress" onclick="showTab('progress')">Progress</button>
+  </div>
+
+  <!-- Today View -->
+  <div id="today-view">
+    <div class="header">
+      <h1 id="today-heading">Day 1</h1>
+      <p id="today-date"></p>
+    </div>
+    <div id="task-list"></div>
+    <button class="complete-btn not-ready" id="complete-btn" onclick="completeDay()">0 of 7 complete</button>
+  </div>
+
+  <!-- Progress View -->
+  <div id="progress-view" style="display:none">
+    <div class="header">
+      <h1>Progress</h1>
+    </div>
+    <div class="streak-banner">
+      <div class="stat-block">
+        <div class="stat-num" id="streak-num">0</div>
+        <div class="stat-label">Day Streak</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-block">
+        <div class="stat-num" id="completed-num">0</div>
+        <div class="stat-label">Days Done</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-block">
+        <div class="stat-num" id="remaining-num">75</div>
+        <div class="stat-label">Remaining</div>
+      </div>
+    </div>
+    <div class="grid-wrap" id="day-grid"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>Complete</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#007aff"></div>Today</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff3b30"></div>Missed</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e5e5ea"></div>Upcoming</div>
+    </div>
+    <p class="progress-text" id="progress-text"></p>
+  </div>
+</div>
+
+<script>
+  const TASKS = [
+    { icon: '🏋️', label: '45 minute workout' },
+    { icon: '🌳', label: '45 minute outdoor workout' },
+    { icon: '📸', label: 'Take progress picture' },
+    { icon: '📖', label: 'Read 10 pages' },
+    { icon: '💧', label: 'Drink 1 gallon of water' },
+    { icon: '🥗', label: 'Follow a diet' },
+    { icon: '🚫', label: 'No cheat meals or alcohol' }
+  ];
+
+  function getState() {
+    try { return JSON.parse(localStorage.getItem('75hard_v1') || 'null'); } catch(e) { return null; }
+  }
+  function saveState(s) { localStorage.setItem('75hard_v1', JSON.stringify(s)); }
+
+  function getTodayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function getDayIndex(startStr) {
+    const start = new Date(startStr + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    return Math.floor((today - start) / 86400000);
+  }
+
+  function getDateStr(startStr, offset) {
+    const d = new Date(startStr + 'T00:00:00');
+    d.setDate(d.getDate() + offset);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function startChallenge() {
+    const val = document.getElementById('start-date-input').value;
+    if (!val) { alert('Please pick a start date.'); return; }
+    saveState({ startDate: val, days: {} });
+    showMainScreen();
+  }
+
+  function showMainScreen() {
+    document.getElementById('setup-screen').classList.remove('active');
+    document.getElementById('main-screen').classList.add('active');
+    showTab('today');
+  }
+
+  function showTab(tab) {
+    document.getElementById('tab-today').classList.toggle('active', tab === 'today');
+    document.getElementById('tab-progress').classList.toggle('active', tab === 'progress');
+    document.getElementById('today-view').style.display = tab === 'today' ? 'block' : 'none';
+    document.getElementById('progress-view').style.display = tab === 'progress' ? 'block' : 'none';
+    if (tab === 'progress') renderProgress();
+    if (tab === 'today') renderToday();
+  }
+
+  function renderToday() {
+    const state = getState(); if (!state) return;
+    const dayIdx = getDayIndex(state.startDate);
+    const todayStr = getTodayStr();
+
+    if (dayIdx < 0) {
+      document.getElementById('today-heading').textContent = 'Starting soon';
+      document.getElementById('today-date').textContent = 'Your challenge hasn\'t started yet';
+    } else if (dayIdx >= 75) {
+      document.getElementById('today-heading').textContent = 'Challenge Complete! 🎉';
+      document.getElementById('today-date').textContent = 'You finished 75 Hard!';
+    } else {
+      document.getElementById('today-heading').textContent = 'Day ' + (dayIdx + 1);
+      document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
+    const dayData = state.days[todayStr] || { tasks: Array(7).fill(false), completed: false };
+    const list = document.getElementById('task-list');
+    list.innerHTML = '';
+
+    TASKS.forEach((t, i) => {
+      const div = document.createElement('div');
+      div.className = 'task-item' + (dayData.tasks[i] ? ' done' : '');
+      div.innerHTML = `
+        <span class="task-icon">${t.icon}</span>
+        <span class="task-label">${t.label}</span>
+        <div class="check-circle">
+          <svg class="checkmark" viewBox="0 0 14 14" fill="none">
+            <path d="M2.5 7L5.5 10L11.5 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>`;
+      if (!dayData.completed && dayIdx >= 0 && dayIdx < 75) {
+        div.onclick = () => toggleTask(i, todayStr);
+      }
+      list.appendChild(div);
+    });
+
+    const doneCount = dayData.tasks.filter(Boolean).length;
+    const allDone = doneCount === 7;
+    const btn = document.getElementById('complete-btn');
+
+    if (dayData.completed) {
+      btn.textContent = '✓ Day ' + (dayIdx + 1) + ' complete!';
+      btn.className = 'complete-btn done-state';
+      btn.disabled = true;
+    } else if (allDone) {
+      btn.textContent = 'Lock in Day ' + (dayIdx + 1) + ' ✓';
+      btn.className = 'complete-btn ready';
+      btn.disabled = false;
+    } else {
+      btn.textContent = doneCount + ' of 7 tasks done';
+      btn.className = 'complete-btn not-ready';
+      btn.disabled = true;
+    }
+  }
+
+  function toggleTask(i, todayStr) {
+    const state = getState();
+    if (!state.days[todayStr]) state.days[todayStr] = { tasks: Array(7).fill(false), completed: false };
+    state.days[todayStr].tasks[i] = !state.days[todayStr].tasks[i];
+    saveState(state);
+    renderToday();
+  }
+
+  function completeDay() {
+    const state = getState();
+    const todayStr = getTodayStr();
+    if (!state.days[todayStr]) return;
+    if (!state.days[todayStr].tasks.every(Boolean)) return;
+    state.days[todayStr].completed = true;
+    saveState(state);
+    renderToday();
+  }
+
+  function renderProgress() {
+    const state = getState(); if (!state) return;
+    const todayStr = getTodayStr();
+    const dayIdx = getDayIndex(state.startDate);
+
+    let completed = 0;
+    for (let i = 0; i < 75; i++) {
+      const ds = getDateStr(state.startDate, i);
+      if (state.days[ds] && state.days[ds].completed) completed++;
+    }
+
+    let streak = 0;
+    for (let i = Math.min(dayIdx, 74); i >= 0; i--) {
+      const ds = getDateStr(state.startDate, i);
+      if (state.days[ds] && state.days[ds].completed) streak++;
+      else break;
+    }
+
+    document.getElementById('streak-num').textContent = streak;
+    document.getElementById('completed-num').textContent = completed;
+    document.getElementById('remaining-num').textContent = Math.max(0, 75 - completed);
+
+    const grid = document.getElementById('day-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < 75; i++) {
+      const ds = getDateStr(state.startDate, i);
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      cell.title = 'Day ' + (i + 1);
+      if (i > dayIdx) cell.classList.add('future');
+      else if (ds === todayStr) cell.classList.add('today');
+      else if (state.days[ds] && state.days[ds].completed) cell.classList.add('completed');
+      else cell.classList.add('missed');
+      cell.textContent = i + 1;
+      grid.appendChild(cell);
+    }
+
+    const pct = Math.round((completed / 75) * 100);
+    document.getElementById('progress-text').textContent = pct + '% of the challenge complete';
+  }
+
+  // Init
+  document.getElementById('start-date-input').value = getTodayStr();
+  const state = getState();
+  if (state) showMainScreen();
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/75hard/sw.js');
+    });
+  }
+</script>
+</body>
+</html>
