@@ -1,4 +1,4 @@
-const CACHE = '75hard-v2';
+const CACHE = '75hard-v3';
 const ASSETS = ['/75hard/', '/75hard/index.html', '/75hard/manifest.json'];
 
 self.addEventListener('install', e => {
