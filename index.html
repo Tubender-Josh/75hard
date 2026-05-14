@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="75 Hard" />
   <meta name="theme-color" content="#1D9E75" />
   <link rel="manifest" href="/75hard/manifest.json" />
-  <link rel="apple-touch-icon" href="/75hard/icons/icon-192.png" />
-  <title>75 Hard </title>
+  <link rel="apple-touch-icon" href="/75hard/icons/bicep-192x192.png" />
+  <title>75 Hard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -158,7 +158,8 @@
       font-weight: 600;
     }
     .day-cell.completed { background: #1D9E75; color: #085041; }
-    .day-cell.missed { background: #ff3b30; color: #ffffff; }
+    .day-cell.partial { background: #FFB800; color: #7A5500; }
+    .day-cell.skipped { background: #c7c7cc; color: #6e6e73; }
     .day-cell.today { background: #007aff; color: #ffffff; }
     .day-cell.future { background: #e5e5ea; color: #aeaeb2; }
 
@@ -304,8 +305,9 @@
     <div class="grid-wrap" id="day-grid"></div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>Complete</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FFB800"></div>Partial</div>
       <div class="legend-item"><div class="legend-dot" style="background:#007aff"></div>Today</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ff3b30"></div>Missed</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c7c7cc"></div>Skipped</div>
       <div class="legend-item"><div class="legend-dot" style="background:#e5e5ea"></div>Upcoming</div>
     </div>
     <p class="progress-text" id="progress-text"></p>
@@ -446,10 +448,12 @@
     const todayStr = getTodayStr();
     const dayIdx = getDayIndex(state.startDate);
 
-    let completed = 0;
+    let completed = 0, partial = 0;
     for (let i = 0; i < 75; i++) {
       const ds = getDateStr(state.startDate, i);
-      if (state.days[ds] && state.days[ds].completed) completed++;
+      const dayData = state.days[ds];
+      if (dayData && dayData.completed) completed++;
+      else if (i < dayIdx && dayData && dayData.tasks.some(Boolean)) partial++;
     }
 
     let streak = 0;
@@ -470,16 +474,34 @@
       const cell = document.createElement('div');
       cell.className = 'day-cell';
       cell.title = 'Day ' + (i + 1);
-      if (i > dayIdx) cell.classList.add('future');
-      else if (ds === todayStr) cell.classList.add('today');
-      else if (state.days[ds] && state.days[ds].completed) cell.classList.add('completed');
-      else cell.classList.add('missed');
-      cell.textContent = i + 1;
+      if (i > dayIdx) {
+        cell.classList.add('future');
+        cell.textContent = i + 1;
+      } else if (ds === todayStr) {
+        cell.classList.add('today');
+        cell.textContent = i + 1;
+      } else if (state.days[ds] && state.days[ds].completed) {
+        cell.classList.add('completed');
+        cell.textContent = i + 1;
+      } else {
+        const dayData = state.days[ds];
+        const checkedCount = dayData ? dayData.tasks.filter(Boolean).length : 0;
+        if (checkedCount > 0) {
+          cell.classList.add('partial');
+          cell.style.fontSize = '7px';
+          cell.textContent = checkedCount + '/7';
+        } else {
+          cell.classList.add('skipped');
+          cell.textContent = i + 1;
+        }
+      }
       grid.appendChild(cell);
     }
 
     const pct = Math.round((completed / 75) * 100);
-    document.getElementById('progress-text').textContent = pct + '% of the challenge complete';
+    let progressMsg = pct + '% of the challenge complete';
+    if (partial > 0) progressMsg += ' · ' + partial + ' partial day' + (partial > 1 ? 's' : '');
+    document.getElementById('progress-text').textContent = progressMsg;
   }
 
   // Init
